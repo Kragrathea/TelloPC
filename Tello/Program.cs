@@ -354,7 +354,7 @@ namespace Tello
                         var limit = 0.5f;//Slow down while testing.
                         rx = rx * limit;
                         ry = ry * limit;
-                        lx = lx * limit;
+                        //lx = lx * limit;
                         //dont limit up/down so we can force land. 
                         //ly = ly * 0.5f;
 
