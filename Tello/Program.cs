@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 
 namespace Tello
 {
+
+    //Simple UDP client/server
     public struct Received
     {
         public IPEndPoint Sender;
@@ -87,6 +89,7 @@ namespace Tello
 
     class Program
     {
+        //Utils to calculate packet CRCs
         //FCS crc
         public static int poly = 13970;
         public static int[] fcstab = { 0, 4489, 8978, 12955, 17956, 22445, 25910, 29887, 35912, 40385, 44890, 48851, 51820, 56293, 59774, 63735, 4225, 264, 13203, 8730, 22181, 18220, 30135, 25662, 40137, 36160, 49115, 44626, 56045, 52068, 63999, 59510, 8450, 12427, 528, 5017, 26406, 30383, 17460, 21949, 44362, 48323, 36440, 40913, 60270, 64231, 51324, 55797, 12675, 8202, 4753, 792, 30631, 26158, 21685, 17724, 48587, 44098, 40665, 36688, 64495, 60006, 55549, 51572, 16900, 21389, 24854, 28831, 1056, 5545, 10034, 14011, 52812, 57285, 60766, 64727, 34920, 39393, 43898, 47859, 21125, 17164, 29079, 24606, 5281, 1320, 14259, 9786, 57037, 53060, 64991, 60502, 39145, 35168, 48123, 43634, 25350, 29327, 16404, 20893, 9506, 13483, 1584, 6073, 61262, 65223, 52316, 56789, 43370, 47331, 35448, 39921, 29575, 25102, 20629, 16668, 13731, 9258, 5809, 1848, 65487, 60998, 56541, 52564, 47595, 43106, 39673, 35696, 33800, 38273, 42778, 46739, 49708, 54181, 57662, 61623, 2112, 6601, 11090, 15067, 20068, 24557, 28022, 31999, 38025, 34048, 47003, 42514, 53933, 49956, 61887, 57398, 6337, 2376, 15315, 10842, 24293, 20332, 32247, 27774, 42250, 46211, 34328, 38801, 58158, 62119, 49212, 53685, 10562, 14539, 2640, 7129, 28518, 32495, 19572, 24061, 46475, 41986, 38553, 34576, 62383, 57894, 53437, 49460, 14787, 10314, 6865, 2904, 32743, 28270, 23797, 19836, 50700, 55173, 58654, 62615, 32808, 37281, 41786, 45747, 19012, 23501, 26966, 30943, 3168, 7657, 12146, 16123, 54925, 50948, 62879, 58390, 37033, 33056, 46011, 41522, 23237, 19276, 31191, 26718, 7393, 3432, 16371, 11898, 59150, 63111, 50204, 54677, 41258, 45219, 33336, 37809, 27462, 31439, 18516, 23005, 11618, 15595, 3696, 8185, 63375, 58886, 54429, 50452, 45483, 40994, 37561, 33584, 31687, 27214, 22741, 18780, 15843, 11370, 7921, 3960 };
@@ -159,6 +162,7 @@ namespace Tello
             int i = uCRC(bytes, len - 1, 119);
             bytes[(len - 1)] = ((byte)(i & 0xFF));
         }
+
         //Create joystick packet from floating point axis.
         //Center = 0.0. 
         //Up/Right =1.0. 
@@ -245,8 +249,6 @@ namespace Tello
 
                 joystick.Poll();
                 joystick.GetCurrentState(ref joyState);
-                //var x = state.X / 5000.0f;
-                //var y = state.Y / 5000.0f;
                 Thread.Sleep(10);
 
             }
@@ -276,18 +278,9 @@ namespace Tello
 
             //messages server
             var server = new UdpListener(6525);
-            Task.Factory.StartNew(async () => {
-                while (true)
-                {
-                    var received = await server.Receive();
-                    int cmdId = ((int)received.bytes[5] | ((int)received.bytes[6] << 8));
-                    Console.WriteLine("cmdId:" + cmdId);
-                }
-            });
 
             //create a new client
             var client = UdpUser.ConnectTo("192.168.10.1", 8889);
-            //            var client = UdpUser.ConnectTo("127.0.0.1", 9000);
 
             Dictionary<int, string> cmdIdLookup = new Dictionary<int, string>
             {
@@ -314,14 +307,11 @@ namespace Tello
 
                         var dataStr = BitConverter.ToString(received.bytes.Skip(9).Take(30).ToArray()).Replace("-", " ");
 
-                        if(cmdId!=26 && cmdId != 86 && cmdId != 53 && cmdId != 4177 && cmdId != 4178)
+                        //Debug printing of select command messages.
+                        if(cmdId!=26 && cmdId != 86 && cmdId != 53 && cmdId != 4176 && cmdId != 4177 && cmdId != 4178)
                         //    if (cmdId == 86)
                                 Console.WriteLine("cmdId:"+cmdId + "(0x"+cmdId.ToString("X2")+")"+cmdName + " "+dataStr  );
 
-
-                        //Console.WriteLine(received.Message);
-                        if (received.Message.Contains("quit"))
-                            break;
                     }
                     catch (Exception ex)
                     {
@@ -332,10 +322,10 @@ namespace Tello
 
 
 
-            byte[] sendbuf = Encoding.UTF8.GetBytes("conn_req:\x00\x00");
-            sendbuf[sendbuf.Length - 2] = 0x96;
-            sendbuf[sendbuf.Length - 1] = 0x17;
-            client.Send(sendbuf);
+            byte[] connectPacket = Encoding.UTF8.GetBytes("conn_req:\x00\x00");
+            connectPacket[connectPacket.Length - 2] = 0x96;
+            connectPacket[connectPacket.Length - 1] = 0x17;
+            client.Send(connectPacket);
 
             //var iframePacket = new byte[] { 0xcc, 0x58, 0x00, 0x7c, 0x60, 0x25, 0x00, 0x00, 0x00, 0x6c, 0x95 };
             //client.Send(iframePacket);
@@ -361,15 +351,17 @@ namespace Tello
                         lx = Math.Abs(lx) < deadBand ? 0.0f : lx;
                         ly = Math.Abs(ly) < deadBand ? 0.0f : ly;
 
-                        rx = rx * 0.5f;
-                        ry = ry * 0.5f;
-                        lx = lx * 0.5f;
+                        var limit = 0.5f;//Slow down while testing.
+                        rx = rx * limit;
+                        ry = ry * limit;
+                        lx = lx * limit;
+                        //dont limit up/down so we can force land. 
                         //ly = ly * 0.5f;
 
                         var packet = createJoyPacket(rx, ry, lx, ly, 0.0f);
                         //Console.WriteLine(rx + " " + ry + " " + lx + " " + ly);
                         client.Send(packet);
-                        Thread.Sleep(20);
+                        Thread.Sleep(50);//Often enough?
 
                         if(joyState.Buttons[3])
                         {
@@ -399,23 +391,10 @@ namespace Tello
             do
             {
                 read = Console.ReadLine();
-                client.Send(read);
+                //client.Send(read);
             } while (read != "quit");
+            Environment.Exit(0);
         }
     }
-    //s conn_req port
-    //r conn_ack port
-    
-    //r msg 0x46=70 Ask return of Date? Code indicates other.
-    //s msg 46. Return of Date. Code indicates other. 
-
-    //r telemetry starts.
-
-    //r 1a 16. Wifi updates.
-    
-    //s 0x25 37. No payload? wth?
-    
-    //r 0x35 53. Light?
-
 
 }
