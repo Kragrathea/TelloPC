@@ -1,4 +1,4 @@
 # TelloPC
-Experimental Tello client for PC.
+This project is outdated. Use TelloLib instead.
 
-DO NOT USE THIS PROGRAM UNLESS YOU KNOW WHAT YOU ARE DOING.
+https://github.com/Kragrathea/TelloLib
